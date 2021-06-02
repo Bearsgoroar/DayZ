@@ -1,0 +1,80 @@
+## Change below
+$Source             = 'TRADERCONFIG_SOURCE_FILE_GOES_HERE'
+$Destination        = 'DESTINATION_CSV_FILE_GOES_HERE'
+$SlotAndStackSource = 'SLOT_AND_STACK_SOURCE_FILE_GOES_HERE'
+
+#### Don't edit below this line ####
+
+## Blanking vars
+$TraderName     = $Null
+$TraderCategory = $Null
+
+## Static vars
+$i               = 1
+$SourceData      = Get-Content -Path $Source
+$SlotAndStackCSV = Import-Csv $SlotAndStackSource
+
+
+$Output = foreach($Line in $SourceData) {
+    ## Trader Name/Type
+    if($Line -match "\<Trader\>(?<TraderName>.*) // ID=[0-9]") { 
+        $TraderName = ($Matches["TraderName"]).trim()
+        
+        ## Skip the rest of this line as it will be blank or junk
+        Continue
+    }
+
+    ## Trader Category
+    if($Line -match "\<Category\>(?<TraderCategory>.*)") { 
+        $TraderCategory = ($Matches["TraderCategory"]).trim()
+
+        ## Resets our counter to 1
+        $i = 1
+
+        ## Skip the rest of this line as it will be blank or junk
+        Continue
+    }
+
+    ## Skip Comments
+    if($Line -match "//") { Continue }
+
+    ## Skip Currency
+    if($Line -match "\<Currency\>") { Continue }
+   
+    ## Sorts out the line into usable data
+    if($Line -notmatch "\<.*\>" -and $Line -match ",") {
+        ## Spliting line into "cells"
+        $Data = $Line -split ","
+
+        ## Pull Slot and Stack Data
+        $SlotAndStackData = $Null
+        $SlotAndStackData = $SlotAndStackCSV | Where {$_.item -eq ($Data[0]).trim()}
+
+        ## Building hashtable for items with no Slot or Stack Data
+        if(!$SlotAndStackData.Slots) {
+            $SlotAndStackData = @{
+                Slots  = " "
+                Stacks = 1
+            }
+        }
+
+        ## Build Excel Row
+        [PSCustomObject]@{
+            "Trader"    = $TraderName
+            "Category"  = $TraderCategory
+            "ItemOrder" = $i
+            "Item"      = $Data[0] -replace "( |\t)"
+            "Quantity"  = $Data[1] -replace "( |\t)"
+            "Buy"       = $Data[2] -replace "( |\t)"
+            "Sell"      = $Data[3] -replace "( |\t)"
+            "Slots"     = $SlotAndStackData.Slots
+            "Stack"     = $SlotAndStackData.Stacks
+
+        }
+
+        ## Increase increment for categories
+        $i++
+    }
+}
+
+$Output.GetEnumerator() | Export-Csv -NoTypeInformation -Path $Destination
