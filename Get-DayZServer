@@ -1,0 +1,27 @@
+function Get-DayZServer {
+    param(
+        [Parameter(Mandatory=$true)]$IP,
+        [int]$Port = "27016",
+        [string]$APIEndpoint = "https://api.daemonforge.dev/server",
+        [switch]$StrippedDownData = $False
+    )
+    
+    process {
+        ## Build URL
+        $URL = "$APIEndpoint/$IP/$Port"
+
+        ## Pull API Data
+        $Data = Invoke-RestMethod -Method Get -Uri $URL -UseBasicParsing
+
+        ## Filters results based on switch
+        switch($StrippedDownData) {
+            $True {
+                $Data | Select Status, Players, Queue, Time
+            }
+
+            $False {
+                $Data
+            }
+        }
+    }
+} 
