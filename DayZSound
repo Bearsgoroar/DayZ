@@ -1,0 +1,7 @@
+function DayZSound {
+    Import-Module AudioDeviceCmdlets
+
+    Set-AudioDevice -Index 3
+    Set-AudioDevice -Index 1
+
+}
